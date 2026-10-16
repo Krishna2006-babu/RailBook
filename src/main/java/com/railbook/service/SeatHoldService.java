@@ -1,6 +1,8 @@
+
 package com.railbook.service;
 
 import com.railbook.dto.SeatHoldResponse;
+import com.railbook.dto.SeatConfirmationResponse;
 import com.railbook.entity.SeatInventory;
 import com.railbook.entity.SeatStatus;
 import com.railbook.repository.SeatInventoryRepository;
@@ -17,8 +19,7 @@ public class SeatHoldService {
 
     private final SeatInventoryRepository inventoryRepository;
 
-    public SeatHoldService(
-            SeatInventoryRepository inventoryRepository) {
+    public SeatHoldService(SeatInventoryRepository inventoryRepository) {
         this.inventoryRepository = inventoryRepository;
     }
 
@@ -61,6 +62,55 @@ public class SeatHoldService {
                 SeatStatus.HELD.name(),
                 token,
                 expiresAt
+        );
+    }
+
+    @Transactional
+    public SeatConfirmationResponse confirmSeat(
+            Long tripId,
+            Long seatId,
+            String holdToken
+    ) {
+        SeatInventory inventory = inventoryRepository
+                .findForUpdate(tripId, seatId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Seat inventory not found"
+                ));
+
+        if (inventory.getStatus() != SeatStatus.HELD) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Seat is not currently held"
+            );
+        }
+
+        if (holdToken == null
+                || holdToken.isBlank()
+                || !holdToken.equals(inventory.getHoldToken())) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Invalid hold token"
+            );
+        }
+
+        Instant now = Instant.now();
+
+        if (inventory.getHoldExpiresAt() == null
+                || !inventory.getHoldExpiresAt().isAfter(now)) {
+            throw new ResponseStatusException(
+                    HttpStatus.CONFLICT,
+                    "Seat hold has expired"
+            );
+        }
+
+        inventory.confirmBooking();
+
+        return new SeatConfirmationResponse(
+                tripId,
+                seatId,
+                SeatStatus.BOOKED.name(),
+                now
         );
     }
 }
