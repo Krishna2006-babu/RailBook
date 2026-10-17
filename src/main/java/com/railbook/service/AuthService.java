@@ -1,11 +1,13 @@
 
 package com.railbook.service;
 
+import com.railbook.dto.LoginResponse;
 import com.railbook.dto.RegisterRequest;
 import com.railbook.dto.RegisterResponse;
 import com.railbook.entity.AppUser;
 import com.railbook.repository.AppUserRepository;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +55,28 @@ public class AuthService {
                 savedUser.getName(),
                 savedUser.getEmail(),
                 savedUser.getCreatedAt()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public LoginResponse createLoginResponse(
+            Authentication authentication
+    ) {
+        String email = authentication.getName()
+                .trim()
+                .toLowerCase(Locale.ROOT);
+
+        AppUser user = appUserRepository.findByEmail(email)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.UNAUTHORIZED,
+                        "Invalid email or password"
+                ));
+
+        return new LoginResponse(
+                user.getId(),
+                user.getName(),
+                user.getEmail(),
+                "Login successful"
         );
     }
 }

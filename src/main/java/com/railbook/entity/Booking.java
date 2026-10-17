@@ -35,6 +35,10 @@ public class Booking {
     @JoinColumn(name = "seat_id", nullable = false)
     private Seat seat;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id")
+    private AppUser user;
+
     @Column(name = "booked_at", nullable = false)
     private Instant bookedAt;
 
@@ -45,6 +49,20 @@ public class Booking {
         this.pnr = pnr;
         this.trip = trip;
         this.seat = seat;
+        this.bookedAt = bookedAt;
+    }
+
+    public Booking(
+            String pnr,
+            Trip trip,
+            Seat seat,
+            AppUser user,
+            Instant bookedAt
+    ) {
+        this.pnr = pnr;
+        this.trip = trip;
+        this.seat = seat;
+        this.user = user;
         this.bookedAt = bookedAt;
     }
 
@@ -62,6 +80,10 @@ public class Booking {
 
     public Seat getSeat() {
         return seat;
+    }
+
+    public AppUser getUser() {
+        return user;
     }
 
     public Instant getBookedAt() {

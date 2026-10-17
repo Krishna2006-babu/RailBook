@@ -12,7 +12,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
-
+import com.railbook.entity.AppUser;
+import com.railbook.repository.AppUserRepository;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import java.time.Instant;
 import java.util.UUID;
 
@@ -22,15 +25,17 @@ public class SeatHoldService {
     private final SeatInventoryRepository inventoryRepository;
     private final BookingRepository bookingRepository;
     private final PnrGenerator pnrGenerator;
-
+    private final AppUserRepository appUserRepository;
     public SeatHoldService(
             SeatInventoryRepository inventoryRepository,
             BookingRepository bookingRepository,
-            PnrGenerator pnrGenerator
+            PnrGenerator pnrGenerator,
+            AppUserRepository appUserRepository
     ) {
         this.inventoryRepository = inventoryRepository;
         this.bookingRepository = bookingRepository;
         this.pnrGenerator = pnrGenerator;
+        this.appUserRepository = appUserRepository;
     }
 
     @Transactional
@@ -81,6 +86,24 @@ public class SeatHoldService {
             Long seatId,
             String holdToken
     ) {
+        Authentication authentication =
+                SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
+                || authentication.getPrincipal().equals("anonymousUser")) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNAUTHORIZED,
+                    "Please log in before confirming a booking"
+            );
+        }
+
+        AppUser user = appUserRepository.findByEmail(
+                authentication.getName()
+        ).orElseThrow(() -> new ResponseStatusException(
+                HttpStatus.UNAUTHORIZED,
+                "Authenticated user not found"
+        ));
         SeatInventory inventory = inventoryRepository
                 .findForUpdate(tripId, seatId)
                 .orElseThrow(() -> new ResponseStatusException(
@@ -120,6 +143,7 @@ public class SeatHoldService {
                 pnr,
                 inventory.getTrip(),
                 inventory.getSeat(),
+                user,
                 now
         );
 
@@ -136,6 +160,7 @@ public class SeatHoldService {
                 pnr,
                 now
         );
+
     }
 
     private String generateUniquePnr() {
