@@ -3,9 +3,11 @@ package com.railbook.service;
 
 import com.railbook.dto.SeatHoldResponse;
 import com.railbook.dto.SeatConfirmationResponse;
+import com.railbook.entity.Booking;
 import com.railbook.entity.SeatInventory;
 import com.railbook.entity.SeatStatus;
 import com.railbook.repository.SeatInventoryRepository;
+import com.railbook.repository.BookingRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,9 +20,17 @@ import java.util.UUID;
 public class SeatHoldService {
 
     private final SeatInventoryRepository inventoryRepository;
+    private final BookingRepository bookingRepository;
+    private final PnrGenerator pnrGenerator;
 
-    public SeatHoldService(SeatInventoryRepository inventoryRepository) {
+    public SeatHoldService(
+            SeatInventoryRepository inventoryRepository,
+            BookingRepository bookingRepository,
+            PnrGenerator pnrGenerator
+    ) {
         this.inventoryRepository = inventoryRepository;
+        this.bookingRepository = bookingRepository;
+        this.pnrGenerator = pnrGenerator;
     }
 
     @Transactional
@@ -104,13 +114,42 @@ public class SeatHoldService {
             );
         }
 
+        String pnr = generateUniquePnr();
+
+        Booking booking = new Booking(
+                pnr,
+                inventory.getTrip(),
+                inventory.getSeat(),
+                now
+        );
+
+        // Persist booking within the current transaction.
+        bookingRepository.saveAndFlush(booking);
+
+        // The booking record and inventory update commit together.
         inventory.confirmBooking();
 
         return new SeatConfirmationResponse(
                 tripId,
                 seatId,
                 SeatStatus.BOOKED.name(),
+                pnr,
                 now
+        );
+    }
+
+    private String generateUniquePnr() {
+        for (int attempt = 0; attempt < 5; attempt++) {
+            String pnr = pnrGenerator.generate();
+
+            if (!bookingRepository.existsByPnr(pnr)) {
+                return pnr;
+            }
+        }
+
+        throw new ResponseStatusException(
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Could not generate a unique PNR"
         );
     }
 }
