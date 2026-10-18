@@ -27,5 +27,22 @@ public interface SeatInventoryRepository
 
     List<SeatInventory> findByTripId(Long tripId);
 
+    @Query("""
+    SELECT i.id
+    FROM SeatInventory i
+    WHERE i.status = com.railbook.entity.SeatStatus.HELD
+      AND i.holdExpiresAt IS NOT NULL
+      AND i.holdExpiresAt <= :now
+    ORDER BY i.holdExpiresAt
+    """)
+    List<Long> findExpiredHoldIds(@Param("now") java.time.Instant now);
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+    SELECT i
+    FROM SeatInventory i
+    WHERE i.id = :inventoryId
+    """)
+    Optional<SeatInventory> findByIdForUpdate(
+            @Param("inventoryId") Long inventoryId);
     boolean existsByTripIdAndSeatId(Long tripId, Long seatId);
 }

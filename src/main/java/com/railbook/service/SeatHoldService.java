@@ -38,6 +38,7 @@ public class SeatHoldService {
         this.appUserRepository = appUserRepository;
     }
 
+
     @Transactional
     public SeatHoldResponse holdSeat(Long tripId, Long seatId) {
 
@@ -57,13 +58,16 @@ public class SeatHoldService {
             );
         }
 
-        if (inventory.getStatus() == SeatStatus.HELD
-                && inventory.getHoldExpiresAt() != null
-                && inventory.getHoldExpiresAt().isAfter(now)) {
-            throw new ResponseStatusException(
-                    HttpStatus.CONFLICT,
-                    "Seat is currently held by another booking"
-            );
+        if (inventory.getStatus() == SeatStatus.HELD) {
+            if (inventory.getHoldExpiresAt() != null
+                    && inventory.getHoldExpiresAt().isAfter(now)) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT,
+                        "Seat is currently held by another booking"
+                );
+            }
+
+            inventory.clearHold();
         }
 
         String token = UUID.randomUUID().toString();
@@ -79,6 +83,7 @@ public class SeatHoldService {
                 expiresAt
         );
     }
+
 
     @Transactional
     public SeatConfirmationResponse confirmSeat(
