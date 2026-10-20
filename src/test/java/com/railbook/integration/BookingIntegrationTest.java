@@ -16,7 +16,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
-
+import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
@@ -50,6 +50,9 @@ class BookingIntegrationTest {
 
     @Autowired
     private EntityManager entityManager;
+
+    @Autowired
+    private RollbackTestService rollbackTestService;
 
     @AfterEach
     void tearDown() {
@@ -128,5 +131,64 @@ class BookingIntegrationTest {
         assertEquals(SeatStatus.BOOKED, savedInventory.getStatus());
         assertNull(savedInventory.getHoldToken());
         assertNull(savedInventory.getHoldExpiresAt());
+    }
+
+    @Test
+    void shouldRollbackBookingAndSeatStatusOnFailure() {
+
+        Train train = trainRepository.saveAndFlush(
+                new Train("IT90002", "Rollback Test Express")
+        );
+
+        Trip trip = tripRepository.saveAndFlush(
+                new Trip(train, LocalDate.now().plusDays(11))
+        );
+
+        Seat seat = seatRepository.saveAndFlush(
+                new Seat(train, "S2", "1", "SLEEPER")
+        );
+
+        SeatInventory inventory = inventoryRepository.saveAndFlush(
+                new SeatInventory(trip, seat)
+        );
+
+        inventory.hold(
+                "rollback-test-token",
+                Instant.now().plusSeconds(300)
+        );
+
+        inventoryRepository.saveAndFlush(inventory);
+
+        String pnr = "9876543210";
+
+        Booking booking = new Booking(
+                pnr,
+                trip,
+                seat,
+                Instant.now()
+        );
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> rollbackTestService.saveBookingAndFail(
+                        booking,
+                        inventory.getId()
+                )
+        );
+
+        entityManager.clear();
+
+        assertFalse(bookingRepository.findByPnr(pnr).isPresent());
+
+        SeatInventory persistedInventory = inventoryRepository
+                .findById(inventory.getId())
+                .orElseThrow();
+
+        assertEquals(SeatStatus.HELD, persistedInventory.getStatus());
+        assertEquals(
+                "rollback-test-token",
+                persistedInventory.getHoldToken()
+        );
+        assertNotNull(persistedInventory.getHoldExpiresAt());
     }
 }
