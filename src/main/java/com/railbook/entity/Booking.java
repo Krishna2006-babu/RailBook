@@ -11,20 +11,18 @@ import java.time.Instant;
                 @UniqueConstraint(
                         name = "uk_booking_pnr",
                         columnNames = "pnr"
-                ),
-                @UniqueConstraint(
-                        name = "uk_booking_trip_seat",
-                        columnNames = {"trip_id", "seat_id"}
                 )
         }
 )
 public class Booking {
-
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private BookingStatus status = BookingStatus.CONFIRMED;
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 12)
+    @Column(nullable = false, length = 12)
     private String pnr;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
@@ -50,6 +48,7 @@ public class Booking {
         this.trip = trip;
         this.seat = seat;
         this.bookedAt = bookedAt;
+        this.status = BookingStatus.CONFIRMED;
     }
 
     public Booking(
@@ -64,6 +63,15 @@ public class Booking {
         this.seat = seat;
         this.user = user;
         this.bookedAt = bookedAt;
+        this.status = BookingStatus.CONFIRMED;
+    }
+
+    public BookingStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(BookingStatus status) {
+        this.status = status;
     }
 
     public Long getId() {

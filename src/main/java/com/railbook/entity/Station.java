@@ -4,7 +4,10 @@ import jakarta.persistence.*;
 
 @Entity
 @Table(name = "stations", uniqueConstraints = {
-        @UniqueConstraint(columnNames = "code")
+        @UniqueConstraint(
+                name = "uk_station_code",
+                columnNames = "code"
+        )
 })
 public class Station {
 

@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 @Entity
 @Table(name = "seats",
         uniqueConstraints = @UniqueConstraint(
+                name = "uk_seat_train_coach_number",
                 columnNames = {"train_id", "coach_number", "seat_number"}
         ))
 public class Seat {

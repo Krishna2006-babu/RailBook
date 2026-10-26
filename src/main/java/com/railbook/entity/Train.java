@@ -6,7 +6,10 @@ import java.util.List;
 
 @Entity
 @Table(name = "trains", uniqueConstraints = {
-        @UniqueConstraint(columnNames = "train_number")
+        @UniqueConstraint(
+                name = "uk_train_number",
+                columnNames = "train_number"
+        )
 })
 public class Train {
 

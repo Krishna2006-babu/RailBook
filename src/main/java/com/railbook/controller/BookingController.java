@@ -1,4 +1,3 @@
-
 package com.railbook.controller;
 
 import com.railbook.dto.BookingResponse;
@@ -20,16 +19,13 @@ public class BookingController {
 
     @GetMapping("/{pnr}")
     public BookingResponse getBookingByPnr(
-            @PathVariable String pnr
+            @PathVariable String pnr,
+            Authentication authentication
     ) {
-        return bookingService.getBookingByPnr(pnr);
-    }
-
-    @GetMapping("/trip/{tripId}")
-    public List<BookingResponse> getBookingsByTripId(
-            @PathVariable Long tripId
-    ) {
-        return bookingService.getBookingsByTripId(tripId);
+        return bookingService.getBookingByPnr(
+                pnr,
+                authentication.getName()
+        );
     }
 
     @GetMapping("/my")
@@ -37,5 +33,16 @@ public class BookingController {
             Authentication authentication
     ) {
         return bookingService.getMyBookings(authentication.getName());
+    }
+
+    @PostMapping("/{pnr}/cancel")
+    public BookingResponse cancelBooking(
+            @PathVariable String pnr,
+            Authentication authentication
+    ) {
+        return bookingService.cancelBooking(
+                pnr,
+                authentication.getName()
+        );
     }
 }
